@@ -1,8 +1,7 @@
-# DS4H_GAMES
+# DS4H_GAMES -Ralph EL CHALFOUN
 
 Projet de JavaScript jeu vidéo MultiJoueur en ligne.
 
-AUTEUR : Ralph EL CHALFOUN
 
 
 Vous devrez installer les modules node js express et socket.io pour pouvoir executer ce jeu. 
