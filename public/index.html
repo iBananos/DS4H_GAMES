@@ -1,0 +1,45 @@
+<html lang="fr">
+
+<head>
+	<link rel="stylesheet" href="css/styles.css">
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="js/jeu.js"></script>
+	<script src="js/chat.js"></script>
+</head>
+
+<body>
+	
+
+	<div class="myGame">
+		
+		<h1 width=1100 height=50 id="bandeauLevel">Niveau 1</h1>
+		<h2 id="aideGame">Esquivez les avions à aura Rouge et atteignez la ligne d'arrivée en premier !</h2>
+		<h3 id="aideGame2">Controle via flèches directionnelles</h3>
+		<img id="gif" border="0" src="./assets/cloud.gif">
+		<canvas width=1000 height=500 background-image="./assets/background.jpg" id="myCanvas"></canvas>
+		
+		
+	</div>
+		<div class="userList"
+		<b>USERS</b>
+		<div id="users"></div>
+	</div>
+	
+	<div class="chatMessages">
+		<div id="conversation"></div>
+		<input id="data" style="width:200px;" />
+		<input type="button" id="datasend" value="send" />
+
+		<p>Artificial latency for this client : <span id="delay">0</span> ms</p> 
+		<p>0 <input type="range" value=0 min=0 max=300 oninput="changeArtificialLatency(this.value)"> 300</p>
+		<p>Heartbeat Server : <span id="heartbeat">10</span> Heartbeat per second</p> 
+		<p>1 <input type="range" value=10 min=1 max=1000 oninput="changeHeartbeat(this.value)"> 1000</p>
+		<p>Rtt time : <span id="rtt"></span> ms, ping = <span id="ping"></span> ms</p>
+		<p>Server time : <span id="serverTime"></span> seconds</p>
+		<p>Client time : <span id="clientTime"></span> seconds</p>
+	</div>
+		
+			
+</body>
+
+</html>
