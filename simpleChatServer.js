@@ -1,3 +1,5 @@
+
+
 class Obstacle {
     constructor(Xi, Yi, Xtaille, Ytaille, vitesseX, vitesseY,color,id) {
         this.x = Xi;
@@ -23,7 +25,7 @@ class Obstacle {
   	//mouvement d'un avion
   	movingObstacles(delta,speed){
 	  if((this.y+this.vitesseY*speed*delta+this.Ytaille<500) && (this.y+this.vitesseY*speed*delta>0)){
-		
+
 		this.y += calcDistanceToMove(delta, this.vitesseY*speed);
 	  }else{
 		this.vitesseY = -this.vitesseY;
@@ -51,14 +53,24 @@ class Player {
     }
 
 	//fait bouger un jouer d'un "cran" en fonction de sa vitesse
-	move(delta,speed){
+	move(delta,speed,x,y){
+		var distX = calcDistanceToMove(delta, this.vitesseX*speed);
+		var distY = calcDistanceToMove(delta, this.vitesseY*speed);
 		if((this.x + delta, this.vitesseX*speed*delta+this.width<canvasWidth) && (this.x+this.vitesseX*speed*delta>0)){
-			this.x += calcDistanceToMove(delta, this.vitesseX*speed);
+			if(/*x-this.x > 30 || */x-this.x < distX){
+				this.x = x ;
+			}else{
+				this.x += distX;
+			}
 		  }else{
 			this.vitesseX = 0;
 		  }
 		  if((this.y+this.vitesseY*speed*delta+this.height<canvasHeight) && (this.y+this.vitesseY*speed*delta>0)){
-			this.y += calcDistanceToMove(delta, this.vitesseY*speed);
+			  if(/*y-this.y >30 ||*/ y-this.y < distY){
+				  this.y = y;
+			  }else{
+				this.y += distY;
+			  }
 		  }else{
 			this.vitesseY = 0;
 		  }
@@ -102,7 +114,8 @@ var canvasWidth = 1000;
 var listOfPlayers = {};
 var listOfObstacles = {};
 var listOfCloudObstacles = {}
-var gamestate = {};
+var listOfPositions= {}
+var gamestate = {}; 
 // pour le calcul du temps
 var delta= 0;
 
@@ -200,6 +213,7 @@ function resetAllPos(){
 	for(let player in listOfPlayers)  {
 		listOfPlayers[player].x = 10
 		listOfPlayers[player].y = listOfPlayers[player].width*0.75*listOfPlayers[player].id%canvasHeight ;
+		io.emit('collapse',{'username' : player ,  'x' : listOfPlayers[player].x, 'y' : listOfPlayers[player].y });
 		
 	}
 }
@@ -211,6 +225,7 @@ function detectAllCollapse(){
 			if(detectCollapse(listOfPlayers[player], listOfObstacles[obstacle])){
 				listOfPlayers[player].x = 10
 				listOfPlayers[player].y = listOfPlayers[player].width*0.75*listOfPlayers[player].id%canvasHeight ;
+				io.emit('collapse',{'username' : player ,  'x' : listOfPlayers[player].x, 'y' : listOfPlayers[player].y });
 			}
 		}
   	}
@@ -268,9 +283,29 @@ function traiteKeyUp(username , key){
 
 //mouvement d'un joueur
 function movePlayer(username){
-	listOfPlayers[username].move(delta,speed);
+	if(listOfPositions[username] != undefined){
+		listOfPlayers[username].move(delta,speed,listOfPositions[username].x,listOfPositions[username].y);
+	}
 }
 
+function reconciliation(username){
+	if(listOfPositions[username] != undefined){
+		if(listOfPlayers[username].x - listOfPositions[username].x > 1){
+			listOfPlayers[username].vitesseX = -1;
+		}else if (listOfPlayers[username].x - listOfPositions[username].x < 1){
+			listOfPlayers[username].vitesseX = 1;
+		}else{
+			listOfPlayers[username].vitesseX = 0;
+		}
+		if(listOfPlayers[username].y - listOfPositions[username].y > 1){
+			listOfPlayers[username].vitesseY = -1;
+		}else if (listOfPlayers[username].y - listOfPositions[username].y < 1){
+			listOfPlayers[username].vitesseY = 1 ;
+		}else{
+			listOfPlayers[username].vitesseY = 0;
+		}
+	}
+}
 
 // LES CONNEXIONS ET ENVOIS DE DONNEE AUX CLIENTS
 
@@ -298,10 +333,11 @@ io.on('connection', (socket) => {
 	socket.on('heartbeat', (newHeartbeat) => {
 		nbUpdatesPerSeconds = newHeartbeat ; 
 		clearInterval(heartbeat);
+		io.emit('updateHeartbeat', socket.username , nbUpdatesPerSeconds);
 		heartbeat= setInterval(()=> {
 			sendData();
 		},1000/nbUpdatesPerSeconds);
-		socket.broadcast.emit('updateHeartbeat', socket.username , nbUpdatesPerSeconds);
+		
 	});
 
 	//les obstacles avions
@@ -332,10 +368,14 @@ io.on('connection', (socket) => {
 	});
 
 	// when the client emits 'sendchat', this listens and executes
-	socket.on('sendpos', (newPos) => {
+	socket.on('sendpos', (data) => {
+		//listOfPositions[newPos.user] = { 'pos':newPos.pos , 'id' : newPos.id } ; 
+		listOfPositions[data.username] = { 'x':data.pos.x , 'y' : data.pos.y } ;
+		console.log(listOfPositions);
 		// we tell the client to execute 'updatepos' with 2 parameters
 		//console.log("recu sendPos");
 		//socket.broadcast.emit('updatepos', socket.username, newPos);
+		
 	});
 
 	// when the client emits 'adduser', this listens and executes
@@ -391,27 +431,27 @@ function timer(currentTime) {
 
 //Envoie les positions des joueurs 
 function sendData(){
+	
 	io.sockets.emit('updateObstacles',listOfObstacles);
 	io.sockets.emit('updateCloudObstacles',listOfCloudObstacles);
 	for(let player in listOfPlayers)  {
 		io.emit('updatepos',{'username' : player ,  'x' : listOfPlayers[player].x, 'y' : listOfPlayers[player].y });
 		io.emit('updatePoints',{'username' : player ,  'points' : listOfPlayers[player].points});
 		io.emit('updateLevelCounter', level);
+		/*var pos = { 'x':listOfPlayers[newPos.user].x , 'y':listOfPlayers[newPos.user].y };
+		socket.emit("lastPos", pos);*/
 	}		
 }
 
 //HEARTBEAT
 
 var heartbeat = setInterval(()=> {
-	sendData();
-	/*
-	gamestate.listOfCloudObstacles = listOfCloudObstacles;
+	sendData();	
+	/*gamestate.listOfCloudObstacles = listOfCloudObstacles;
 	gamestate.listOfObstacles = listOfObstacles;
 	gamestate.listOfPlayers = listOfPlayers;
 	gamestate.playerNames = playerNames;
-	gamestate.level = level;
-	io.sockets.emit('gamestate',gamestate);
-	*/
+	gamestate.level = level;*/
 },1000/nbUpdatesPerSeconds);
 
 
@@ -423,6 +463,7 @@ setInterval(()=> {
 	detectAllCollapse();
 	movingAllObstacles();
 	for(let player in listOfPlayers)  {
+		reconciliation(player);
 		movePlayer(player);
   	}
 	
