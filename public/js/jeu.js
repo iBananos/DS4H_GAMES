@@ -26,10 +26,11 @@ var player3=new Image();
 player3.src="./assets/plane_2_red.png";
 var player4=new Image();
 player4.src="./assets/plane_2_yellow.png";
-
+var ghostPic=new Image();
+ghostPic.src="./assets/ghost_2.png";
 var tabImage = [plane1,plane2,plane3,plane4];
 var tabPlayer = [player1,player2,player3,player4];
-
+var ghost = {'x':10 ,'y':10};
 // les joueurs et obstacles 
 let allPlayers = {};
 let allObstacles = {};
@@ -53,16 +54,29 @@ function startGame() {
 
 //LES DATAS RECUPEREE DU SERVEUR 
 
+function collapseServer(player){
+  if(allPlayers[player.username] != undefined){
+    allPlayers[player.username].x = player.x;
+    allPlayers[player.username].y = player.y;
+  }
+}
 //update les joueurs
 function updatePlayers(listOfPlayers) {
   allPlayers = listOfPlayers;
+  allPlayers[username].vitesseX = 0;
+  allPlayers[username].vitesseY = 0;
 }
 
 //update la position des joueurs
 function updatePlayerNewPos(data) {
   if(allPlayers[data.username] != undefined){
-  allPlayers[data.username].x = data.x;
-  allPlayers[data.username].y = data.y;
+    if(data.username == username){
+      ghost.x = data.x;
+      ghost.y = data.y;
+    }else{
+    allPlayers[data.username].x = data.x;
+    allPlayers[data.username].y = data.y;
+    }
   }
 }
 
@@ -91,6 +105,20 @@ function updateCloudObstacles(listCloudObstacles) {
 
 // LES METHODES D'AFFICHAGE
 
+//dessine la dernière position calculée par le serveur 
+
+function drawGhost(){
+  ctx.strokeRect(ghost.x, ghost.y, playerWidth, playerHeight);
+  /*
+  ctx.shadowColor = 'black';
+  ctx.shadowBlur = 40;
+  ctx.lineJoin = 'bevel';
+  ctx.lineWidth = 0;
+  ctx.strokeStyle = 'transparent';*/
+  
+  ctx.drawImage(ghostPic,ghost.x, ghost.y, playerWidth, playerHeight);
+  //ctx.fillText('LAST POS', ghost.x, ghost.y);
+}
 
 //dessine les joueurs
 function drawAllPlayers() {
@@ -164,6 +192,7 @@ function drawCloudObstacle(obstacle){
 
 // LES COLLISIONS
 
+/*
 //detecte les collisions entre joueurs et obstacles (avions)
 function detectAllCollapse(){
 	for(let player in allPlayers)  {
@@ -174,9 +203,29 @@ function detectAllCollapse(){
 			}
 		}
   }
+}*/
+
+/*
+//detecte une victoire et dans ce cas reset la game
+function detectWinGame(){
+	for(let player in allPlayers)  {
+	  	if(detectWin(allPlayers[player])){
+        allPlayers[player].x = 10;
+				allPlayers[player].y = playerWidth*0.75*allPlayers[player].id%canvas.height ;
+		}
+	}
 }
 
+//detecte la victoire pour un joueur
+function detectWin(player){
+	if((player.x + playerWidth >= canvas.width-25) ){
+		return true;
+  }
+  return false
+}*/
+
 //detecte les collisions entre un joueur et un obstacle (avion)
+/*
 function detectCollapse(player, obstacle){
 	if(player.x+playerWidth < obstacle.x || player.x > obstacle.x+obstacle.Xtaille){
 		return false;
@@ -186,6 +235,7 @@ function detectCollapse(player, obstacle){
 	}
 	return true;
 }
+*/
 
 // LES MOUVEMENTS
 
@@ -235,19 +285,24 @@ function traiteKeyUp(event){
 //mouvement d'un joueur
 function movePlayer(username){
   if(allPlayers[username] != undefined){
-    if((allPlayers[username].x + allPlayers[username].vitesseX+playerWidth<canvas.width) && (allPlayers[username].x+allPlayers[username].vitesseX>0)){
-      allPlayers[username].x += calcDistanceToMove(delta, allPlayers[username].vitesseX*speed);
+  var distX = calcDistanceToMove(delta, allPlayers[username].vitesseX*speed);
+  var distY = calcDistanceToMove(delta, allPlayers[username].vitesseY*speed);
+  
+    if((allPlayers[username].x + distX+playerWidth<canvas.width) && (allPlayers[username].x+distX>0)){
+      allPlayers[username].x += distX;
     }else{
       allPlayers[username].vitesseX = 0;
     }
-    if((allPlayers[username].y+allPlayers[username].vitesseY+playerHeight<canvas.height) && (allPlayers[username].y+allPlayers[username].vitesseY>0)){
-      allPlayers[username].y += calcDistanceToMove(delta, allPlayers[username].vitesseY*speed);
+    if((allPlayers[username].y+distY+playerHeight<canvas.height) && (allPlayers[username].y+distY>0)){
+      allPlayers[username].y += distY;
     }else{
       allPlayers[username].vitesseY = 0;
     }
-  }
+  
   //socket.emit("sendpos", { user: username, pos: allPlayers[username]});
-  //send("sendpos", { user: username, pos: allPlayers[username]});
+  var data = { 'username' : username, 'pos' : {'x': allPlayers[username].x, 'y':allPlayers[username].y} , 'id' : Date.now() };
+  send("sendpos", data);
+}
 }
 
 //mouvement des obstacles
@@ -306,10 +361,13 @@ function animationLoop(time) {
     // 2 On dessine des objets
     drawTarget();
     movePlayer(username);
+    drawGhost();
     drawAllPlayers();
     movingAllObstacles();
     drawAllObstacle();
-    detectAllCollapse();
+    //detectWinGame();
+    //detectAllCollapse();
+    
   }
   // 3 On rappelle la fonction d'animation à 60 im/s
   requestAnimationFrame(animationLoop);

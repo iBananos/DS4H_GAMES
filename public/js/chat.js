@@ -63,6 +63,7 @@ function init() {
   // just one player moved
   socket.on("updatepos", (newPos) => {
     updatePlayerNewPos(newPos);
+    
     //console.log(newPos);
   });
 
@@ -81,7 +82,9 @@ function init() {
     }
   });
 
-
+  socket.on('lastPos',(ghost)=>{
+    
+  });
   
   socket.on("gamestate", (gamestate) => {
     updatePlayers(gamestate.listOfplayers);
@@ -96,7 +99,9 @@ function init() {
 
   socket.on('updateHeartbeat', (newHeartbeat) => {
     heartbeat = newHeartbeat;
-  });
+    let spanHeartbeatValue = document.querySelector("#heartbeat");
+    spanHeartbeatValue.innerHTML = nbUpdate;
+    });
 
   // update the whole list of players, useful when a player
   // connects or disconnects, we must update the whole list
@@ -106,6 +111,10 @@ function init() {
 
   socket.on("updateObstacles", (listOfObstacles) => {
     updateObstacles(listOfObstacles);
+  });
+
+  socket.on("collapse", (player) => {
+    collapseServer(player);
   });
 
   socket.on("updateCloudObstacles", (listOfCloudObstacles) => {
